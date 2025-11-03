@@ -1,4 +1,3 @@
-// backend/src/models/Producto.js
 
 const mongoose = require('mongoose');
 

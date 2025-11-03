@@ -1,4 +1,3 @@
-// backend/src/models/Cliente.js
 import mongoose from 'mongoose';
 
 const ClienteSchema = new mongoose.Schema({

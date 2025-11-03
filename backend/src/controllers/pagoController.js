@@ -1,11 +1,9 @@
-// backend/src/controllers/pagoController.js
 import Pago from '../models/Pago.js';
 import Cliente from '../models/Cliente.js';
-import Venta from '../models/Venta.js'; // <-- ¡IMPORTANTE!
+import Venta from '../models/Venta.js'; 
 import mongoose from 'mongoose';
 
-// @desc    Crear un nuevo pago (Abono) CON CONCILIACIÓN FIFO
-// @route   POST /api/pagos
+// Crear un nuevo pago
 const crearPago = async (req, res) => {
   const { clienteId, monto, metodoDePago, referencia, fechaPago, vendedorId, clienteNombre, vendedorNombre } = req.body;
 
@@ -24,7 +22,7 @@ const crearPago = async (req, res) => {
       throw new Error(`El monto (Q${montoNum.toFixed(2)}) es mayor al saldo pendiente (Q${cliente.saldoActual.toFixed(2)})`);
     }
 
-    // 1. Guardar el documento de Pago
+    // 1AQUI SE GUARDA el documento de Pago
     const nuevoPago = new Pago({
       clienteId, monto: montoNum, metodoDePago, referencia,
       fechaPago: fechaPago || new Date(),
@@ -32,18 +30,17 @@ const crearPago = async (req, res) => {
     });
     await nuevoPago.save({ session });
 
-    // 2. Lógica de Conciliación FIFO (First-In, First-Out)
     
-    // Buscamos todas las facturas pendientes de este cliente, de la más antigua a la más nueva
+    // Logica para pagar las facturas del mas antiguo al mas nuevo
     const facturasPendientes = await Venta.find({
       clienteId: clienteId,
       estadoPago: { $in: ['Pendiente', 'Abonada Parcialmente'] }
-    }).sort({ fechaVenta: 1 }).session(session); // 1 = ascendente (FIFO)
+    }).sort({ fechaVenta: 1 }).session(session);
 
     let montoRestanteDelPago = montoNum;
 
     for (const factura of facturasPendientes) {
-      if (montoRestanteDelPago <= 0) break; // Si ya no hay dinero en el abono, paramos
+      if (montoRestanteDelPago <= 0) break;
 
       const montoAPagarEnFactura = Math.min(factura.montoPendiente, montoRestanteDelPago);
 
@@ -52,7 +49,7 @@ const crearPago = async (req, res) => {
       montoRestanteDelPago -= montoAPagarEnFactura;
 
       // Actualizar estado de la factura
-      if (factura.montoPendiente <= 0.01) { // Usamos un margen pequeño por decimales
+      if (factura.montoPendiente <= 0.01) {
         factura.montoPendiente = 0;
         factura.estadoPago = 'Pagada';
       } else {
@@ -65,11 +62,10 @@ const crearPago = async (req, res) => {
     // 3. Actualizar el saldo TOTAL del cliente
     await Cliente.findByIdAndUpdate(
       clienteId,
-      { $inc: { saldoActual: -montoNum } }, // Restamos el monto total del abono
+      { $inc: { saldoActual: -montoNum } },
       { session }
     );
 
-    // 4. Confirmar la transacción
     await session.commitTransaction();
     res.status(201).json({ message: 'Pago registrado y aplicado exitosamente', pago: nuevoPago });
 
@@ -83,7 +79,6 @@ const crearPago = async (req, res) => {
   }
 };
 
-// ... (obtenerPagos y obtenerPagosPorCliente quedan igual) ...
 const obtenerPagos = async (req, res) => {
   try {
     const pagos = await Pago.find().sort({ fechaPago: -1 });

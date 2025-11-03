@@ -1,26 +1,18 @@
-// backend/src/controllers/productoController.js
-
 import Producto from '../models/Producto.js';
 
-// @desc    Crear un nuevo producto
-// @route   POST /api/productos
-const crearProducto = async (req, res) => { // <-- CAMBIO AQUÍ
+// Crear un nuevo producto
+const crearProducto = async (req, res) => {
   try {
     const nuevoProducto = new Producto(req.body);
     await nuevoProducto.save();
     res.status(201).json({ message: 'Producto agregado exitosamente', producto: nuevoProducto });
   } catch (error) {
-    // --- LÍNEAS DE DEPURACIÓN AÑADIDAS ---
     console.error('--- ¡ERROR AL CREAR PRODUCTO! ---');
     console.error(error);
-    // ------------------------------------
-    
     res.status(500).json({ message: 'Error al agregar el producto', error: error.message });
   }
 };
 
-// @desc    Obtener todos los productos
-// @route   GET /api/productos
 const obtenerProductos = async (req, res) => { // <-- CAMBIO AQUÍ
   try {
     const productos = await Producto.find();
@@ -30,9 +22,7 @@ const obtenerProductos = async (req, res) => { // <-- CAMBIO AQUÍ
   }
 };
 
-// @desc    Obtener un producto por su ID
-// @route   GET /api/productos/:id
-const obtenerProductoPorId = async (req, res) => { // <-- CAMBIO AQUÍ
+const obtenerProductoPorId = async (req, res) => {
   try {
     const producto = await Producto.findById(req.params.id);
     if (!producto) {
@@ -44,9 +34,8 @@ const obtenerProductoPorId = async (req, res) => { // <-- CAMBIO AQUÍ
   }
 };
 
-// @desc    Actualizar un producto
-// @route   PUT /api/productos/:id
-const actualizarProducto = async (req, res) => { // <-- CAMBIO AQUÍ
+// Actualizar un producto
+const actualizarProducto = async (req, res) => {
   try {
     const productoActualizado = await Producto.findByIdAndUpdate(
       req.params.id,
@@ -62,8 +51,7 @@ const actualizarProducto = async (req, res) => { // <-- CAMBIO AQUÍ
   }
 };
 
-// @desc    Eliminar un producto
-// @route   DELETE /api/productos/:id
+
 const eliminarProducto = async (req, res) => { // <-- CAMBIO AQUÍ
   try {
     const productoEliminado = await Producto.findByIdAndDelete(req.params.id);

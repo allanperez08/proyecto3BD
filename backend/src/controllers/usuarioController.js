@@ -1,9 +1,7 @@
-// backend/src/controllers/usuarioController.js
+
 import Usuario from '../models/Usuario.js';
 import asyncHandler from 'express-async-handler';
 import generarToken from '../utils/generarToken.js';
-
-// ... (crearUsuario, obtenerUsuarios, actualizarUsuario, eliminarUsuario, autenticarUsuario... quedan igual)
 
 const crearUsuario = async (req, res) => {
   try {
@@ -69,12 +67,11 @@ const autenticarUsuario = asyncHandler(async (req, res) => {
 });
 
 
-// --- 1. NUEVA FUNCIÓN DE RESETEO ---
+
 const resetearPassword = async (req, res) => {
   try {
     const { password } = req.body;
-    
-    // Validación simple en el backend también
+
     if (!password || password.length < 6) {
       return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
     }
@@ -84,7 +81,6 @@ const resetearPassword = async (req, res) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Asignamos la nueva contraseña. El hook 'pre.save' del Modelo se encargará de hashearla
     usuario.password = password;
     await usuario.save();
 
@@ -94,7 +90,6 @@ const resetearPassword = async (req, res) => {
     res.status(500).json({ message: 'Error al resetear la contraseña', error: error.message });
   }
 };
-// ------------------------------------
 
 export {
   crearUsuario,

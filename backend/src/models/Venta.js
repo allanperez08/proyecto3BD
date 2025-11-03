@@ -1,4 +1,3 @@
-// backend/src/models/Venta.js
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
@@ -26,19 +25,17 @@ const VentaSchema = new Schema({
   tipoDePago: { type: String, required: true, enum: ['Contado', 'Credito'] },
   metodoDePago: { type: String, required: true, enum: ['Efectivo', 'Tarjeta', 'Transferencia', 'N/A'] },
   
-  // --- CAMPOS MODIFICADOS ---
   estadoPago: {
     type: String,
     required: true,
-    enum: ['Pagada', 'Pendiente', 'Abonada Parcialmente', 'Anulada'], // Más estados
+    enum: ['Pagada', 'Pendiente', 'Abonada Parcialmente', 'Anulada'],
   },
   montoPagado: { type: Number, required: true, default: 0 },
-  montoPendiente: { // ¡NUEVO CAMPO CLAVE!
+  montoPendiente: {
     type: Number,
     required: true,
     default: 0,
   }
-  // --- FIN DE CAMBIOS ---
 });
 
 const Venta = mongoose.model('Venta', VentaSchema);

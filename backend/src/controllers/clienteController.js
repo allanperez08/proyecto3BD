@@ -1,8 +1,7 @@
-// backend/src/controllers/clienteController.js
+
 import Cliente from '../models/Cliente.js';
 
-// @desc    Crear un nuevo cliente
-// @route   POST /api/clientes
+// Crear un nuevo cliente
 const crearCliente = async (req, res) => {
   try {
     const nuevoCliente = new Cliente(req.body);
@@ -21,11 +20,9 @@ const crearCliente = async (req, res) => {
   }
 };
 
-// @desc    Obtener todos los clientes
-// @route   GET /api/clientes
+// Mostrar todos los clientes
 const obtenerClientes = async (req, res) => {
   try {
-    // Ordenamos alfabéticamente por nombre
     const clientes = await Cliente.find().sort({ nombreCompleto: 1 }); 
     res.status(200).json(clientes);
   } catch (error) {
@@ -33,8 +30,7 @@ const obtenerClientes = async (req, res) => {
   }
 };
 
-// @desc    Obtener un cliente por su ID
-// @route   GET /api/clientes/:id
+
 const obtenerClientePorId = async (req, res) => {
   try {
     const cliente = await Cliente.findById(req.params.id);
@@ -45,14 +41,13 @@ const obtenerClientePorId = async (req, res) => {
   }
 };
 
-// @desc    Actualizar un cliente
-// @route   PUT /api/clientes/:id
+// Actualizar un cliente
 const actualizarCliente = async (req, res) => {
   try {
     const clienteActualizado = await Cliente.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true } // 'new' devuelve el doc actualizado, 'runValidators' aplica el schema
+      { new: true, runValidators: true }
     );
     if (!clienteActualizado) return res.status(404).json({ message: 'Cliente no encontrado' });
     res.status(200).json({ message: 'Cliente actualizado', cliente: clienteActualizado });
@@ -64,14 +59,12 @@ const actualizarCliente = async (req, res) => {
   }
 };
 
-// @desc    Eliminar un cliente
-// @route   DELETE /api/clientes/:id
+// Eliminar un cliente
 const eliminarCliente = async (req, res) => {
   try {
     const cliente = await Cliente.findById(req.params.id);
     if (!cliente) return res.status(404).json({ message: 'Cliente no encontrado' });
 
-    // REGLA DE NEGOCIO: No permitir borrar si tiene deuda
     if (cliente.saldoActual > 0) {
       return res.status(400).json({ message: 'No se puede eliminar un cliente con saldo pendiente' });
     }

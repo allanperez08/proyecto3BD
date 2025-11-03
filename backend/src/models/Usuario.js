@@ -1,9 +1,7 @@
-// backend/src/models/Usuario.js
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs'; // <-- AÑADIDO
+import bcrypt from 'bcryptjs'; 
 
 const UsuarioSchema = new mongoose.Schema({
-  // ... (todos tus campos: nombreCompleto, username, etc. quedan igual)
   nombreCompleto: {
     type: String,
     required: [true, 'El nombre completo es obligatorio'],
@@ -37,7 +35,7 @@ const UsuarioSchema = new mongoose.Schema({
   },
 });
 
-// Middleware para hashear la contraseña ANTES de guardarla
+
 UsuarioSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
@@ -47,7 +45,7 @@ UsuarioSchema.pre('save', async function (next) {
   next();
 });
 
-// --- AÑADIDO: MÉTODO PARA COMPARAR CONTRASEÑAS ---
+// este metodo es para comparar la contraseña ingresada con la almacenada
 UsuarioSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

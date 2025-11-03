@@ -1,4 +1,3 @@
-// backend/src/models/Pago.js
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
@@ -31,7 +30,6 @@ const PagoSchema = new Schema({
     ref: 'Usuario',
     required: true,
   },
-  // Desnormalizamos para reportes
   clienteNombre: { type: String }, 
   vendedorNombre: { type: String },
 });

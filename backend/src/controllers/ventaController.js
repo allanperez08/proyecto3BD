@@ -1,12 +1,9 @@
-// backend/src/controllers/ventaController.js
-
 import Venta from '../models/Venta.js';
 import Producto from '../models/Producto.js';
-import Cliente from '../models/Cliente.js'; // <-- ¡IMPORTANTE! Importamos el nuevo modelo
+import Cliente from '../models/Cliente.js'; 
 import mongoose from 'mongoose';
 
-// @desc    Crear una nueva venta (REFACTORIZADO CON LÓGICA DE CRÉDITO)
-// @route   POST /api/ventas
+// Crear una nueva venta 
 const crearVenta = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -24,7 +21,9 @@ const crearVenta = async (req, res) => {
 
     let estadoPago = 'Pagada';
     let metodoPagoFinal = metodoDePago;
-    let montoPendiente = 0; // <-- Por defecto es 0
+    let montoPendiente = 0;  // esto lo deje por defecto en 0
+
+    // VEntas a credicto
 
     if (tipoDePago === 'Credito') {
       const nuevoSaldo = cliente.saldoActual + totalVenta;
@@ -36,10 +35,10 @@ const crearVenta = async (req, res) => {
       
       estadoPago = 'Pendiente';
       metodoPagoFinal = 'N/A';
-      montoPendiente = totalVenta; // <-- ¡AQUÍ! Se asigna el monto pendiente
+      montoPendiente = totalVenta; // definir el monto pendiente de pago del cliente
     }
 
-    // 4. Verificar y actualizar el Stock de Productos (Lógica existente)
+    // Stock de productos
     const actualizacionesStock = [];
     for (const item of items) {
       const producto = await Producto.findById(item.productoId).session(session);
@@ -68,32 +67,26 @@ const crearVenta = async (req, res) => {
       metodoDePago: metodoPagoFinal,
       estadoPago: estadoPago,
       montoPagado: (tipoDePago === 'Contado' ? totalVenta : 0),
-      montoPendiente: montoPendiente, // <-- ¡AQUÍ! Se guarda en la BD
+      montoPendiente: montoPendiente, // SE GUARDA EN LA BD
     });
 
     await nuevaVenta.save({ session });
 
-    // 6. Si todo salió bien, confirmar la transacción
     await session.commitTransaction();
     res.status(201).json({ message: 'Venta registrada exitosamente', venta: nuevaVenta });
 
   } catch (error) {
-    // 7. Si algo falló, revertir TODOS los cambios (stock, saldo de cliente, etc.)
     await session.abortTransaction();
     console.error('--- ¡ERROR EN TRANSACCIÓN DE VENTA! ---');
     console.error(error);
-    // Enviamos el mensaje de error específico al frontend
     res.status(400).json({ message: error.message || 'Error al registrar la venta' });
   } finally {
-    // 8. Siempre cerrar la sesión
     session.endSession();
   }
 };
 
-// @desc    Obtener todas las ventas
-// @route   GET /api/ventas
+// Obtener todas las ventas
 const obtenerVentas = async (req, res) => {
-  // ... (Esta función no necesita cambios)
   try {
     const ventas = await Venta.find().sort({ fechaVenta: -1 });
     res.status(200).json(ventas);
@@ -102,8 +95,7 @@ const obtenerVentas = async (req, res) => {
   }
 };
 
-// @desc    Anular una venta (REFACTORIZADO CON LÓGICA DE CRÉDITO)
-// @route   PUT /api/ventas/anular/:id
+// Anular venta
 const anularVenta = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -115,26 +107,24 @@ const anularVenta = async (req, res) => {
     if (!venta) throw new Error('Venta no encontrada');
     if (venta.estado === 'Anulada') throw new Error('Esta venta ya ha sido anulada');
 
-    // 1. Devolver el stock
     const devolucionStock = venta.items.map(item => ({
       updateOne: { filter: { _id: item.productoId }, update: { $inc: { cantidadEnStock: +item.cantidadVendida } } },
     }));
     await Producto.bulkWrite(devolucionStock, { session });
 
-    // 2. Revertir el saldo del cliente (SOLO si la venta no había sido pagada)
-    // El montoPendiente nos dice exactamente cuánto se le debe "devolver" al saldo del cliente
+
     if (venta.montoPendiente > 0) {
       await Cliente.findByIdAndUpdate(
         venta.clienteId,
-        { $inc: { saldoActual: -venta.montoPendiente } }, // Restamos la deuda que esta venta había sumado
+        { $inc: { saldoActual: -venta.montoPendiente } },
         { session }
       );
     }
 
-    // 3. Actualizar el estado de la venta
+    // Estado de venta, esto se refiere a que si estaba pagada o pendiente, se anula
     venta.estado = 'Anulada';
     venta.estadoPago = 'Anulada';
-    venta.montoPendiente = 0; // La deuda de esta factura queda en 0
+    venta.montoPendiente = 0; 
     await venta.save({ session });
 
     await session.commitTransaction();
