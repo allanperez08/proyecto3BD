@@ -1,10 +1,10 @@
 # Ferretería Xelajú - Sistema POS y Gestión (Proyecto Base de Datos II)
 
 # Integrantes
-Perez Ajanel, Allan Eduardo - 1501321
-Sanchez Tasej, Francisco Javier – 2012421
-Salguero Sandoval, Miguel Antonio - 1626923
-Yax Puác, Kevin Miguel - 1529422
+* Perez Ajanel, Allan Eduardo - 1501321
+* Sanchez Tasej, Francisco Javier – 2012421
+* Salguero Sandoval, Miguel Antonio - 1626923
+* Yax Puác, Kevin Miguel - 1529422
 
 
 ## ✨ Características Principales del programa
