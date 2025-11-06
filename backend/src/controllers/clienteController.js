@@ -1,10 +1,12 @@
 
 import Cliente from '../models/Cliente.js';
+import Venta from '../models/Venta.js';
+import mongoose from 'mongoose';
 
 // Crear un nuevo cliente
 const crearCliente = async (req, res) => {
   try {
-    const nuevoCliente = new Cliente(req.body);
+    const nuevoCliente = new Cliente(req.body); 
     await nuevoCliente.save();
     res.status(201).json({ message: 'Cliente creado exitosamente', cliente: nuevoCliente });
   } catch (error) {
@@ -76,10 +78,86 @@ const eliminarCliente = async (req, res) => {
   }
 };
 
+// Registrar un abono de cliente
+const registrarAbonoCliente = async (req, res) => {
+  const { monto, metodoDePago, referencia, fechaPago, vendedorId, vendedorNombre } = req.body;
+  const clienteId = req.params.id; // El ID del cliente viene de la URL
+
+  const montoNum = parseFloat(monto);
+  if (!montoNum || montoNum <= 0) {
+    console.error(`--- ¡ERROR DE VALIDACIÓN DE ABONO! Monto recibido: ${monto} ---`);
+    return res.status(400).json({ message: 'El monto debe ser mayor a cero' });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const cliente = await Cliente.findById(clienteId).session(session);
+    if (!cliente) throw new Error('Cliente no encontrado');
+    if (montoNum > cliente.saldoActual) {
+      throw new Error(`El monto (Q${montoNum.toFixed(2)}) es mayor al saldo pendiente (Q${cliente.saldoActual.toFixed(2)})`);
+    }
+
+    // 1. Crear el *objeto* de pago (no un documento)
+    const nuevoPagoObjeto = {
+      monto: montoNum,
+      metodoDePago,
+      referencia,
+      fechaPago: fechaPago || new Date(),
+      vendedorId,
+      vendedorNombre,
+    };
+
+    // 2. Lógica de Conciliación FIFO (igual que antes)
+    const facturasPendientes = await Venta.find({
+      clienteId: clienteId,
+      estadoPago: { $in: ['Pendiente', 'Abonada Parcialmente'] }
+    }).sort({ fechaVenta: 1 }).session(session);
+
+    let montoRestanteDelPago = montoNum;
+    for (const factura of facturasPendientes) {
+      if (montoRestanteDelPago <= 0) break;
+      const montoAPagarEnFactura = Math.min(factura.montoPendiente, montoRestanteDelPago);
+      
+      factura.montoPendiente -= montoAPagarEnFactura;
+      factura.montoPagado += montoAPagarEnFactura;
+      montoRestanteDelPago -= montoAPagarEnFactura;
+
+      if (factura.montoPendiente <= 0.01) {
+        factura.montoPendiente = 0;
+        factura.estadoPago = 'Pagada';
+      } else {
+        factura.estadoPago = 'Abonada Parcialmente';
+      }
+      await factura.save({ session });
+    }
+
+    // 3. Actualizar el cliente
+    cliente.saldoActual -= montoNum; // Restamos el saldo
+    cliente.pagos.push(nuevoPagoObjeto); // ¡Incrustamos el pago en el array!
+    
+    await cliente.save({ session });
+
+    // 4. Confirmar la transacción
+    await session.commitTransaction();
+    res.status(201).json({ message: 'Pago registrado y aplicado exitosamente', cliente });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('--- ¡ERROR EN TRANSACCIÓN DE PAGO (EMBEDDED)! ---');
+    console.error(error);
+    res.status(400).json({ message: error.message || 'Error al registrar el pago' });
+  } finally {
+    session.endSession();
+  }
+};
+
 export {
   crearCliente,
   obtenerClientes,
   obtenerClientePorId,
   actualizarCliente,
   eliminarCliente,
+  registrarAbonoCliente
 };

@@ -4,7 +4,7 @@ import apiClient from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import ClienteModal from '../components/ClienteModal';
 import PagoModal from '../components/PagoModal';
-import AbonoHistorialModal from '../components/AbonoHistorialModal'; // <-- 1. IMPORTAR
+import AbonoHistorialModal from '../components/AbonoHistorialModal';
 import {
   Box, Button, Typography, Paper, CircularProgress, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Tooltip
@@ -14,7 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import PaymentIcon from '@mui/icons-material/Payment';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'; // <-- 2. ÍCONO DE HISTORIAL
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 const ClientesPage = () => {
   const { usuario } = useAuth();
@@ -22,16 +22,16 @@ const ClientesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Modales
+  // --- ESTADOS SEPARADOS PARA CADA MODAL (LA CLAVE DEL ARREGLO) ---
   const [isClienteModalOpen, setIsClienteModalOpen] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState(null);
+  
   const [isPagoModalOpen, setIsPagoModalOpen] = useState(false);
   const [clienteAPagar, setClienteAPagar] = useState(null);
   
-  // --- 3. ESTADO PARA MODAL HISTORIAL ---
   const [isHistorialOpen, setIsHistorialOpen] = useState(false);
   const [clienteHistorial, setClienteHistorial] = useState(null);
-  // ------------------------------------
+  // -----------------------------------------------------------------
 
   const fetchClientes = async () => {
     try {
@@ -44,9 +44,15 @@ const ClientesPage = () => {
 
   useEffect(() => { fetchClientes(); }, []);
 
-  // --- Lógica Modal Cliente (sin cambios) ---
-  const handleOpenClienteModal = (cliente = null) => { setClienteAEditar(cliente); setIsClienteModalOpen(true); };
-  const handleCloseClienteModal = () => { setIsClienteModalOpen(false); setClienteAEditar(null); };
+  // --- Lógica Modal Cliente ---
+  const handleOpenClienteModal = (cliente = null) => {
+    setClienteAEditar(cliente);
+    setIsClienteModalOpen(true);
+  };
+  const handleCloseClienteModal = () => {
+    setIsClienteModalOpen(false);
+    setClienteAEditar(null);
+  };
   const handleSaveCliente = async (datosCliente) => {
     try {
       if (clienteAEditar) await apiClient.put(`/clientes/${clienteAEditar._id}`, datosCliente);
@@ -54,18 +60,16 @@ const ClientesPage = () => {
       fetchClientes(); handleCloseClienteModal();
     } catch (err) { setError(err.response?.data?.message || 'Error al guardar el cliente'); }
   };
-  const handleDeleteCliente = async (id) => {
-    if (window.confirm('¿Estás seguro?')) {
-      try {
-        await apiClient.delete(`/clientes/${id}`);
-        fetchClientes();
-      } catch (err) { setError(err.response?.data?.message || 'Error al eliminar'); }
-    }
-  };
   
-  // --- Lógica Modal de Pago (sin cambios) ---
-  const handleOpenPagoModal = (cliente) => { setClienteAPagar(cliente); setIsPagoModalOpen(true); };
-  const handleClosePagoModal = () => { setIsPagoModalOpen(false); setClienteAPagar(null); };
+  // --- Lógica Modal de Pago (Abono) ---
+  const handleOpenPagoModal = (cliente) => {
+    setClienteAPagar(cliente);
+    setIsPagoModalOpen(true);
+  };
+  const handleClosePagoModal = () => {
+    setIsPagoModalOpen(false);
+    setClienteAPagar(null);
+  };
   const handleSavePago = async (datosPago) => {
     try {
       const pagoCompleto = {
@@ -75,15 +79,21 @@ const ClientesPage = () => {
         vendedorId: usuario._id,
         vendedorNombre: usuario.nombreCompleto,
       };
-      await apiClient.post('/pagos', pagoCompleto); // <-- CORREGIDO: quitado /api
-      handleClosePagoModal(); fetchClientes(); 
+      // Usamos el endpoint correcto: /clientes/:id/abono
+      const { data } = await apiClient.post(`/clientes/${clienteAPagar._id}/abono`, pagoCompleto);
+      
+      // Actualizamos la lista de clientes con la info del cliente actualizado
+      setClientes(clientes.map(c => 
+        c._id === data.cliente._id ? data.cliente : c
+      ));
+      
+      handleClosePagoModal();
     } catch (err) {
       setError(err.response?.data?.message || 'Error al registrar el pago');
-      handleClosePagoModal();
     }
   };
   
-  // --- 4. LÓGICA MODAL HISTORIAL (NUEVA) ---
+  // --- Lógica Modal Historial ---
   const handleOpenHistorial = (cliente) => {
     setClienteHistorial(cliente);
     setIsHistorialOpen(true);
@@ -92,9 +102,17 @@ const ClientesPage = () => {
     setIsHistorialOpen(false);
     setClienteHistorial(null);
   };
-  // ------------------------------------
 
-  // --- RENDERIZADO DE LA PÁGINA ---
+  // --- Lógica Eliminar Cliente ---
+  const handleDeleteCliente = async (id) => {
+    if (window.confirm('¿Estás seguro?')) {
+      try {
+        await apiClient.delete(`/clientes/${id}`);
+        fetchClientes();
+      } catch (err) { setError(err.response?.data?.message || 'Error al eliminar'); }
+    }
+  };
+
   if (loading) return <CircularProgress sx={{ display: 'block', margin: '100px auto' }} />;
 
   return (
@@ -130,20 +148,19 @@ const ClientesPage = () => {
                   Q{cliente.saldoActual.toFixed(2)}
                 </TableCell>
                 <TableCell>
-                  {/* --- 5. AÑADIR BOTONES --- */}
                   <Tooltip title="Registrar Abono">
-                    <span> {/* Span para Tooltip en botón deshabilitado */}
+                    <span>
                       <IconButton 
                         color="success" 
-                        onClick={() => handleOpenPagoModal(cliente)}
-                        disabled={cliente.saldoActual <= 0} // Deshabilita si no hay deuda
+                        onClick={() => handleOpenPagoModal(cliente)} // Dispara el estado de PAGO
+                        disabled={cliente.saldoActual <= 0}
                       >
                         <PaymentIcon />
                       </IconButton>
                     </span>
                   </Tooltip>
                   <Tooltip title="Ver Historial de Abonos">
-                    <IconButton color="info" onClick={() => handleOpenHistorial(cliente)}>
+                    <IconButton color="info" onClick={() => handleOpenHistorial(cliente)}> {/* Dispara el estado de HISTORIAL */}
                       <ReceiptLongIcon />
                     </IconButton>
                   </Tooltip>
@@ -164,25 +181,26 @@ const ClientesPage = () => {
         </Table>
       </TableContainer>
 
-      {/* Renderizar los tres modals */}
+      {/* RENDERIZADO DE MODALES CON SUS PROPIOS ESTADOS */}
       <ClienteModal
         open={isClienteModalOpen}
         onClose={handleCloseClienteModal}
         onSave={handleSaveCliente}
         cliente={clienteAEditar}
       />
-      {clienteAPagar && (
+      
+      {clienteAPagar && ( // Se renderiza si "clienteAPagar" existe
         <PagoModal
-          open={isPagoModalOpen}
+          open={isPagoModalOpen} // Se muestra si "isPagoModalOpen" es true
           onClose={handleClosePagoModal}
           onSave={handleSavePago}
           cliente={clienteAPagar}
         />
       )}
-      {/* --- 6. RENDERIZAR MODAL HISTORIAL --- */}
-      {clienteHistorial && (
+      
+      {clienteHistorial && ( // Se renderiza si "clienteHistorial" existe
         <AbonoHistorialModal
-          open={isHistorialOpen}
+          open={isHistorialOpen} // Se muestra si "isHistorialOpen" es true
           onClose={handleCloseHistorial}
           cliente={clienteHistorial}
         />

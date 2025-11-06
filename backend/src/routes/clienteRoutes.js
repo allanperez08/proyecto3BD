@@ -1,4 +1,4 @@
-// backend/src/routes/clienteRoutes.js
+
 import express from 'express';
 const router = express.Router();
 import {
@@ -7,6 +7,7 @@ import {
   obtenerClientePorId,
   actualizarCliente,
   eliminarCliente,
+  registrarAbonoCliente
 } from '../controllers/clienteController.js';
 
 // Rutas CRUD completas
@@ -18,5 +19,7 @@ router.route('/:id')
   .get(obtenerClientePorId)
   .put(actualizarCliente)
   .delete(eliminarCliente);
+
+router.post('/:id/abono', registrarAbonoCliente);
 
 export default router;
